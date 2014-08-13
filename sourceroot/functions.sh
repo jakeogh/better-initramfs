@@ -185,6 +185,23 @@ process_commandline_options() {
 			luks_trim)
 				luks_trim=true
 			;;
+			enc_keydev\=*)
+				require_keyfile=true
+				enc_keydev=$(get_opt $i)
+			;;
+			enc_keyfile\=*)
+				enc_keyfile=$(get_opt $i)
+			;;
+			encdelay\=*)
+				encdelay=$(get_opt $i)
+			;;
+			enc_headerdev\=*)
+				require_headerfile=true
+				enc_headerdev=$(get_opt $i)
+			;;
+			enc_headerfile\=*)
+				enc_headerfile=$(get_opt $i)
+			;;
 		esac
 	done
 }
@@ -251,6 +268,32 @@ InitializeLUKS() {
 	fi
 
 	musthave enc_root
+
+	if use require_keyfile; then
+		musthave enc_keyfile
+		dodir /keydev
+		if use encdelay; then
+			einfo "Waiting for ${enc_keydev} to settle."
+			run sleep ${encdelay}
+		fi
+		einfo "Mounting keydev ${enc_keydev}."
+		resolve_device enc_keydev
+		run mount "$enc_keydev" /keydev
+	fi
+
+	if use require_headerfile; then
+		musthave enc_headerfile
+		dodir /headerdev
+		if use encdelay; then
+			einfo "Waiting for ${enc_headerdev} to settle."
+			run sleep ${encdelay}
+		fi
+		einfo "Mounting headerdev ${enc_headerdev}."
+		resolve_device enc_headerdev
+		run mount "$enc_headerdev" /headerdev
+	fi
+
+
 	
 	local enc_num='1'
 	local dev_name="enc_root"
@@ -275,6 +318,14 @@ InitializeLUKS() {
 			cryptsetup_args="${cryptsetup_args} --allow-discards"
 		fi
 
+		if use require_keyfile; then
+			cryptsetup_args="${cryptsetup_args} --key-file=/keydev/${enc_keyfile}"
+		fi
+
+		if use require_headerfile; then
+			cryptsetup_args="${cryptsetup_args} --header /headerdev/${enc_headerfile}"
+		fi
+
 		if use sshd; then
 			askpass "Enter passphrase for ${enc_dev}: " | run cryptsetup --tries 1 --key-file=- luksOpen ${cryptsetup_args} "${enc_dev}" "${dev_name}"
 			# Remove the fifo, askpass will create new if needed (ex multiple devices).
@@ -282,8 +333,22 @@ InitializeLUKS() {
 		else
 			run cryptsetup luksOpen --tries 25 ${cryptsetup_args} "${enc_dev}" "${dev_name}"
 		fi
+
+		run kpartx -a /dev/mapper/"${dev_name}"
+
 		enc_num="$((enc_num+1))"
 	done
+
+	if use require_keyfile; then
+		einfo "Unmounting keydev."
+		run umount /keydev
+	fi
+
+	if use require_headerfile; then
+		einfo "Unmounting headerdev."
+		run umount /headerdev
+	fi
+
 }
 
 InitializeLVM() {
@@ -447,7 +512,7 @@ emount() {
 					einfo "Mounting /newroot..."
 					if [ -n "${rootfstype}" ]; then local mountparams="${rootfsmountparams} -t ${rootfstype}"; fi
 					resolve_device root
-					run mount -o ${root_rw_ro:-ro} ${mountparams} "${root}" '/newroot'
+					run mount -o ${root_rw_ro:-ro} ${mountparams} "${root}1" '/newroot'
 				fi
 			;;
 
