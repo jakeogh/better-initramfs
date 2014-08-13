@@ -510,7 +510,7 @@ emount() {
 					einfo "Mounting /newroot..."
 					if [ -n "${rootfstype}" ]; then local mountparams="${rootfsmountparams} -t ${rootfstype}"; fi
 					resolve_device root
-					run mount -o ${root_rw_ro:-ro} ${mountparams} "${root}1" '/newroot'
+					run mount -o ${root_rw_ro:-ro} ${mountparams} "${root}" '/newroot'
 				fi
 			;;
 
