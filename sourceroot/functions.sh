@@ -334,8 +334,6 @@ InitializeLUKS() {
 			run cryptsetup luksOpen --tries 25 ${cryptsetup_args} "${enc_dev}" "${dev_name}"
 		fi
 
-		run kpartx -a /dev/mapper/"${dev_name}"
-
 		enc_num="$((enc_num+1))"
 	done
 
