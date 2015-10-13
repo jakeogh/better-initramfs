@@ -1,7 +1,8 @@
 #!/bin/sh
 name='lzo'
 version='2.08'
-sources=( "https://github.com/jakeogh/better-initramfs/downloads/$name-$version.tar.gz" )
+sources=( "https://github.com/jakeogh/better-initramfs/blob/master/downloads/$name-$version.tar.gz?raw=true" )
+
 homepage='http://www.oberhumer.com/opensource/lzo/'
 license='GPLv2'
 
